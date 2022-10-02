@@ -1,0 +1,66 @@
+.POSIX:
+.SUFFIXES:
+.SUFFIXES: .c .o .uto
+
+VERSION    = 1.0.0
+
+CC         = @CC@
+CCOV       = gcov
+CFLAGS     = @CFLAGS@
+CFLAGS_COV = @CFLAGS_COV@
+CFLAGS_SAN = @CFLAGS_SAN@
+INCLUDEDIR = @PREFIX@/include
+LD         = @LD@
+LIBDIR     = @PREFIX@/lib
+PREFIX     = @PREFIX@
+
+.PHONY: all
+all: libhexdump.a hexdump.coverage
+
+libhexdump.a: hexdump.o
+	$(LD) -r $^ -o $@
+
+.c.o:
+	$(CC) $(CFLAGS) -c $^ -o $@
+
+.c.uto:
+	$(CC) $(CFLAGS) $(CFLAGS_COV) $(CFLAGS_SAN) -c $^ -o $@
+
+hexdump.coverage: hexdump.uto test_hexdump.c
+	$(CC) $(CFLAGS) $(CFLAGS_COV) $(CFLAGS_SAN) $^ -o $@
+	./$@
+	$(CCOV) hexdump.c
+	! grep "#####" hexdump.c.gcov |grep -ve "// UNREACHABLE$$"
+
+libhexdump.pc:
+	( echo 'Name: libhexdump' ;\
+	echo 'Version: $(VERSION)' ;\
+	echo 'Description: Render data in canonical hex+ASCII style' ;\
+	echo 'prefix=$(PREFIX)' ;\
+	echo 'exec_prefix=$${prefix}' ;\
+	echo 'includedir=$${prefix}/include' ;\
+	echo 'libdir=$${prefix}/lib' ;\
+	echo 'Cflags: -I$${includedir}' ;\
+	echo 'Libs: -L$${libdir} -lhexdump' ) > $@
+
+.PHONY: install
+install: hexdump.h libhexdump.a libhexdump.pc
+	mkdir -p $(INCLUDEDIR)/libhexdump
+	mkdir -p $(LIBDIR)/pkgconfig
+	install -m644 hexdump.h $(INCLUDEDIR)/libhexdump/hexdump.h
+	install -m644 libhexdump.a $(LIBDIR)/libhexdump.a
+	install -m644 libhexdump.pc $(LIBDIR)/pkgconfig/libhexdump.pc
+
+.PHONY: uninstall
+uninstall:
+	rm -f $(INCLUDEDIR)/libhexdump/hexdump.h
+	rm -f $(LIBDIR)/libhexdump.a
+	rm -f $(LIBDIR)/pkgconfig/libhexdump.pc
+
+.PHONY: clean
+clean:
+	rm -rf libhexdump.a libhexdump.pc *.o *.uto *.gc?? *.coverage
+
+.PHONY: distclean
+distclean: clean
+	rm -f Makefile config.status
