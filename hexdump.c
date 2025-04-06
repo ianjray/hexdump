@@ -35,7 +35,7 @@ static void emit_octet(struct hexdump *self, char c)
 {
     self->output[self->column] = isprint(c) ? c : '.';
     emit_separator(self);
-    printf(" %02x", c & 0xFF);
+    printf(" %02x", (unsigned)(c & 0xFF));
 }
 
 static void emit_blank(struct hexdump *self)
